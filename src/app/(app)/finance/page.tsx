@@ -51,7 +51,9 @@ export default function Finance() {
   const profit = revenue - totalCost;
   const rate = revenue > 100000 ? 0.25 : 0.20;
   const share = profit > 0 ? Math.round(profit * rate) : 0;
-  const ownerNet = profit - share;
+  const ownerNetBeforeZakat = profit - share;
+  const zakat = ownerNetBeforeZakat > 0 ? Math.round(ownerNetBeforeZakat * 0.025) : 0;
+  const ownerNet = ownerNetBeforeZakat - zakat;
 
   return (
     <div>
@@ -80,10 +82,13 @@ export default function Finance() {
           <div className="border-t border-line my-2" />
           <Row label="= Net profit" value={profit} bold />
           <Row label={`Sales manager share (${rate * 100}%)`} value={-share} tone="gold" />
+          <Row label="= Your net before zakat" value={ownerNetBeforeZakat} />
+          <Row label="− Zakat (2.5% estimate)" value={-zakat} />
           <div className="border-t border-line my-2" />
-          <Row label="= Your net (owner)" value={ownerNet} bold tone="teal" />
+          <Row label="= Your net after zakat" value={ownerNet} bold tone="teal" />
         </div>
         {revenue > 100000 && <div className="mt-3 text-xs text-gold">Revenue above SAR 100,000 — 25% rate applied.</div>}
+        <div className="mt-2 text-xs text-muted">Zakat shown as a simple 2.5% monthly estimate on your net, taken from your share only (it does not affect the sales manager). ZATCA assesses zakat annually on your full zakat base — treat this as a monthly reserve, not the final bill. No VAT applied.</div>
       </div>
 
       <div className="card p-5">

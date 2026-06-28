@@ -5,13 +5,13 @@ import { useAuth } from "@/components/AuthProvider";
 import { PageHead, Badge, Empty, Money } from "@/components/ui";
 import { Field, Modal } from "@/components/form";
 import { can } from "@/lib/roles";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 const BLANK = {
   name: "", contact_person: "", designation: "", email: "", phone: "",
   package_tier: "starter", monthly_fee: 0, start_date: format(new Date(), "yyyy-MM-dd"),
-  status: "active", assigned_to: "", notes: "",
+  end_date: "", status: "active", assigned_to: "", notes: "",
 };
 
 export default function Clients() {
@@ -32,12 +32,19 @@ export default function Clients() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const payload = { ...form, monthly_fee: Number(form.monthly_fee), assigned_to: form.assigned_to || null };
+    const payload = { ...form, monthly_fee: Number(form.monthly_fee), assigned_to: form.assigned_to || null, end_date: form.end_date || null };
     await supabase.from("clients").insert(payload);
     setForm(BLANK); setOpen(false); load();
   }
 
   const name = (id: string) => team.find((t) => t.id === id)?.full_name || "—";
+  const isCeo = profile?.role === "ceo";
+
+  async function remove(id: string, label: string) {
+    if (!confirm(`Delete client "${label}"? This cannot be undone.`)) return;
+    await supabase.from("clients").delete().eq("id", id);
+    load();
+  }
 
   return (
     <div>
@@ -45,8 +52,8 @@ export default function Clients() {
         action={editable ? <button className="btn btn-gold" onClick={() => setOpen(true)}><Plus className="w-4 h-4" /> Add client</button> : undefined} />
       {rows.length === 0 ? <Empty text="No clients yet." /> :
         <div className="card overflow-x-auto">
-          <table className="w-full min-w-[760px]">
-            <thead><tr>{["Client","Tier","Monthly fee","Status","Start","Assigned","Contact"].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
+          <table className="w-full min-w-[900px]">
+            <thead><tr>{["Client","Tier","Monthly fee","Status","Start","End","Assigned","Contact",""].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
             <tbody>
               {rows.map((c) => (
                 <tr key={c.id} className="hover:bg-panel2/50">
@@ -55,8 +62,10 @@ export default function Clients() {
                   <td className="td"><Money n={c.monthly_fee} /></td>
                   <td className="td"><Badge value={c.status} /></td>
                   <td className="td whitespace-nowrap text-muted">{c.start_date ? format(new Date(c.start_date), "dd MMM yy") : "—"}</td>
+                  <td className="td whitespace-nowrap text-muted">{c.end_date ? format(new Date(c.end_date), "dd MMM yy") : "—"}</td>
                   <td className="td text-muted">{name(c.assigned_to)}</td>
                   <td className="td text-muted">{c.contact_person}{c.phone ? ` · ${c.phone}` : ""}</td>
+                  <td className="td text-right">{isCeo && <button onClick={() => remove(c.id, c.name)} className="text-muted hover:text-red-400" title="Delete client"><Trash2 className="w-4 h-4" /></button>}</td>
                 </tr>
               ))}
             </tbody>
@@ -74,6 +83,7 @@ export default function Clients() {
             </Field>
             <Field label="Monthly fee (SAR)"><input type="number" className="input" value={form.monthly_fee} onChange={(e) => setForm({ ...form, monthly_fee: e.target.value })} /></Field>
             <Field label="Start date"><input type="date" className="input" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} /></Field>
+            <Field label="Contract end date"><input type="date" className="input" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></Field>
             <Field label="Status">
               <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                 <option value="active">Active</option><option value="paused">Paused</option><option value="churned">Churned</option>

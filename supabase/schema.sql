@@ -45,6 +45,7 @@ create table if not exists clients (
   package_tier text default 'starter',          -- starter | growth | premium | custom
   monthly_fee numeric default 0,
   start_date date,
+  end_date date,                                 -- contract end date
   status text default 'active',                  -- active | paused | churned
   platforms text[] default '{}',
   assigned_to uuid references profiles(id),
@@ -125,9 +126,16 @@ drop policy if exists p_clients_read on clients;
 create policy p_clients_read on clients for select to authenticated
   using ( my_role() in ('ceo','sales_manager') or assigned_to = auth.uid() );
 drop policy if exists p_clients_write on clients;
-create policy p_clients_write on clients for all to authenticated
+drop policy if exists p_clients_insert on clients;
+create policy p_clients_insert on clients for insert to authenticated
+  with check ( my_role() in ('ceo','sales_manager') );
+drop policy if exists p_clients_update on clients;
+create policy p_clients_update on clients for update to authenticated
   using ( my_role() in ('ceo','sales_manager') )
   with check ( my_role() in ('ceo','sales_manager') );
+drop policy if exists p_clients_delete on clients;
+create policy p_clients_delete on clients for delete to authenticated
+  using ( is_ceo() );   -- only the CEO can delete clients
 
 -- SALES VISITS: CEO + sales_manager see all; others none. Creator can write own; CEO writes all
 drop policy if exists p_visits_read on sales_visits;
