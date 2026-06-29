@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { can, ROLE_LABEL } from "@/lib/roles";
 import {
   LayoutDashboard, Briefcase, Users, CheckSquare, CreditCard,
-  TrendingUp, UserCog, LogOut, Menu, X, Clapperboard,
+  TrendingUp, UserCog, LogOut, Menu, X, Clapperboard, Calculator,
 } from "lucide-react";
 
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
   { key: "tasks", href: "/tasks", label: "Tasks", icon: CheckSquare },
   { key: "payments", href: "/payments", label: "Payments", icon: CreditCard },
   { key: "finance", href: "/finance", label: "Finance", icon: TrendingUp },
+  { key: "accounting", href: "/accounting", label: "Accounting", icon: Calculator },
   { key: "team", href: "/team", label: "Team", icon: UserCog },
 ];
 

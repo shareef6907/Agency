@@ -9,7 +9,7 @@ import { Users, Briefcase, CreditCard, CheckSquare } from "lucide-react";
 
 export default function Dashboard() {
   const { profile } = useAuth();
-  const [s, setS] = useState({ clients: 0, mrr: 0, pending: 0, visits: 0, myTasks: 0, leads: 0 });
+  const [s, setS] = useState<any>({ clients: 0, mrr: 0, pending: 0, visits: 0, myTasks: 0, leads: 0, accIncome: 0, accExpense: 0, accNet: 0 });
 
   async function loadStats() {
       if (!profile) return;
@@ -34,6 +34,14 @@ export default function Dashboard() {
         const { count } = await supabase.from("tasks").select("*", { count: "exact", head: true }).neq("status", "done");
         out.myTasks = count || 0;
       }
+      if (can(profile.role, "accounting")) {
+        const ym = new Date().toISOString().slice(0, 7);
+        const { data: txd } = await supabase.from("acc_transactions").select("kind,amount,tx_date");
+        const mt = (txd || []).filter((t: any) => (t.tx_date || "").startsWith(ym));
+        out.accIncome = mt.filter((t: any) => t.kind === "income").reduce((a: number, t: any) => a + Number(t.amount || 0), 0);
+        out.accExpense = mt.filter((t: any) => t.kind === "expense").reduce((a: number, t: any) => a + Number(t.amount || 0), 0);
+        out.accNet = out.accIncome - out.accExpense;
+      }
       setS((p) => ({ ...p, ...out }));
   }
   useEffect(() => { loadStats(); /* eslint-disable-next-line */ }, [profile]);
@@ -51,6 +59,11 @@ export default function Dashboard() {
     cards.push({ label: "Interested leads", value: s.leads, icon: Users });
   }
   if (can(profile.role, "tasks")) cards.push({ label: "Open tasks", value: s.myTasks, icon: CheckSquare });
+  if (can(profile.role, "accounting")) {
+    cards.push({ label: "Income this month", value: <Money n={s.accIncome || 0} />, icon: Briefcase });
+    cards.push({ label: "Expenses this month", value: <Money n={s.accExpense || 0} />, icon: CreditCard });
+    cards.push({ label: "Net this month", value: <Money n={s.accNet || 0} />, icon: Briefcase });
+  }
 
   return (
     <div>

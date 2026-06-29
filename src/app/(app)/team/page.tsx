@@ -8,7 +8,7 @@ import { Field, Modal } from "@/components/form";
 import { ROLE_LABEL, Role } from "@/lib/roles";
 import { UserPlus, Trash2 } from "lucide-react";
 
-const ROLES: Role[] = ["ceo", "sales_manager", "account_manager", "editor"];
+const ROLES: Role[] = ["ceo", "sales_manager", "account_manager", "editor", "accountant"];
 const BLANK = { full_name: "", email: "", password: "", role: "editor" as Role };
 
 export default function Team() {

@@ -217,3 +217,8 @@ create trigger on_auth_user_created
 -- ============================================================
 --  DONE. Next: create your first CEO user (see README step 3).
 -- ============================================================
+
+-- ============================================================
+--  ACCOUNTING (added v5) — role 'accountant', ledger + invoices
+--  See migration_v5.sql for the runnable version.
+-- ============================================================
