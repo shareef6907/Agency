@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/components/AuthProvider";
+import { useRealtime } from "@/lib/useRealtime";
 import { PageHead, Empty } from "@/components/ui";
 import { Field, Modal } from "@/components/form";
 import { ROLE_LABEL, Role } from "@/lib/roles";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Trash2 } from "lucide-react";
 
 const ROLES: Role[] = ["ceo", "sales_manager", "account_manager", "editor"];
 const BLANK = { full_name: "", email: "", password: "", role: "editor" as Role };
@@ -15,12 +17,14 @@ export default function Team() {
   const [form, setForm] = useState<any>(BLANK);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const { profile: me } = useAuth();
 
   async function load() {
     const { data } = await supabase.from("profiles").select("*").order("created_at");
     setRows(data || []);
   }
   useEffect(() => { load(); }, []);
+  useRealtime(["profiles"], load);
 
   async function create(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setMsg("");
@@ -36,20 +40,35 @@ export default function Team() {
     setForm(BLANK); setOpen(false); load();
   }
 
+  async function remove(id: string, name: string) {
+    if (id === me?.id) { alert("You can't delete your own account."); return; }
+    if (!confirm(`Remove ${name}? Their login will stop working immediately.`)) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch("/api/admin/delete-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ id }),
+    });
+    const json = await res.json();
+    if (!res.ok) { alert(json.error || "Failed to remove"); return; }
+    load();
+  }
+
   return (
     <div>
       <PageHead title="Team" sub="Create and manage employee accounts."
         action={<button className="btn btn-gold" onClick={() => setOpen(true)}><UserPlus className="w-4 h-4" /> Add employee</button>} />
       {rows.length === 0 ? <Empty text="No team members yet." /> :
         <div className="card overflow-x-auto">
-          <table className="w-full min-w-[480px]">
-            <thead><tr>{["Name","Role","Status"].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
+          <table className="w-full min-w-[560px]">
+            <thead><tr>{["Name","Role","Status",""].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
             <tbody>
               {rows.map((p) => (
                 <tr key={p.id}>
                   <td className="td font-semibold">{p.full_name || "—"}</td>
                   <td className="td text-gold">{ROLE_LABEL[p.role as Role]}</td>
                   <td className="td">{p.active ? <span className="text-teal text-sm">Active</span> : <span className="text-muted text-sm">Inactive</span>}</td>
+                  <td className="td text-right">{p.id !== me?.id && <button onClick={() => remove(p.id, p.full_name || "this user")} className="text-muted hover:text-red-400" title="Remove employee"><Trash2 className="w-4 h-4" /></button>}</td>
                 </tr>
               ))}
             </tbody>

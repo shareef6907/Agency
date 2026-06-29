@@ -4,15 +4,15 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 import { can } from "@/lib/roles";
 import { PageHead, Money } from "@/components/ui";
+import { useRealtime } from "@/lib/useRealtime";
 import { Users, Briefcase, CreditCard, CheckSquare } from "lucide-react";
 
 export default function Dashboard() {
   const { profile } = useAuth();
   const [s, setS] = useState({ clients: 0, mrr: 0, pending: 0, visits: 0, myTasks: 0, leads: 0 });
 
-  useEffect(() => {
-    if (!profile) return;
-    (async () => {
+  async function loadStats() {
+      if (!profile) return;
       const out: any = {};
       if (can(profile.role, "clients")) {
         const { data } = await supabase.from("clients").select("monthly_fee,status");
@@ -35,8 +35,9 @@ export default function Dashboard() {
         out.myTasks = count || 0;
       }
       setS((p) => ({ ...p, ...out }));
-    })();
-  }, [profile]);
+  }
+  useEffect(() => { loadStats(); /* eslint-disable-next-line */ }, [profile]);
+  useRealtime(["clients","payments","sales_visits","tasks"], loadStats);
 
   if (!profile) return null;
   const cards = [];

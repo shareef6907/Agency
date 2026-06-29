@@ -68,6 +68,21 @@ create table if not exists sales_visits (
   created_at timestamptz not null default now()
 );
 
+
+-- ---------- MEETINGS (scheduled future + past meetings) ----------
+create table if not exists meetings (
+  id uuid primary key default gen_random_uuid(),
+  company_name text not null,
+  contact_person text default '',
+  meeting_at timestamptz not null,
+  type text default 'meeting',                   -- meeting | call | visit
+  comments text default '',
+  outcome text default '',
+  status text default 'scheduled',               -- scheduled | done | cancelled
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
 -- ---------- TASKS ----------
 create table if not exists tasks (
   id uuid primary key default gen_random_uuid(),
@@ -111,6 +126,7 @@ create table if not exists costs (
 alter table profiles      enable row level security;
 alter table clients       enable row level security;
 alter table sales_visits  enable row level security;
+alter table meetings      enable row level security;
 alter table tasks         enable row level security;
 alter table payments      enable row level security;
 alter table costs         enable row level security;
@@ -143,6 +159,12 @@ create policy p_visits_read on sales_visits for select to authenticated
   using ( my_role() in ('ceo','sales_manager') );
 drop policy if exists p_visits_write on sales_visits;
 create policy p_visits_write on sales_visits for all to authenticated
+  using ( my_role() in ('ceo','sales_manager') )
+  with check ( my_role() in ('ceo','sales_manager') );
+
+-- MEETINGS: CEO + sales_manager
+drop policy if exists p_meetings_all on meetings;
+create policy p_meetings_all on meetings for all to authenticated
   using ( my_role() in ('ceo','sales_manager') )
   with check ( my_role() in ('ceo','sales_manager') );
 

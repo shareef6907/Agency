@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { PageHead, Money } from "@/components/ui";
 import { Field, Modal } from "@/components/form";
 import { Plus, Trash2, Wand2 } from "lucide-react";
+import { useRealtime } from "@/lib/useRealtime";
 import { format } from "date-fns";
 
 const CAT = ["salary", "rent", "electricity", "subscriptions", "other"];
@@ -25,6 +26,7 @@ export default function Finance() {
     setActiveClients(count || 0);
   }
   useEffect(() => { load(); }, [month]);
+  useRealtime(["payments","costs","clients"], load);
 
   async function addCost(e: React.FormEvent) {
     e.preventDefault();

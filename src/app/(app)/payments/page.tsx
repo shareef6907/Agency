@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { PageHead, Badge, Empty, Money } from "@/components/ui";
 import { Field, Modal } from "@/components/form";
 import { Plus } from "lucide-react";
+import { useRealtime } from "@/lib/useRealtime";
 import { format } from "date-fns";
 
 const BLANK = { client_id: "", amount: 0, period: format(new Date(), "yyyy-MM"), due_date: "", status: "pending", notes: "" };
@@ -21,6 +22,7 @@ export default function Payments() {
     setClients(c || []);
   }
   useEffect(() => { load(); }, []);
+  useRealtime(["payments","clients"], load);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();

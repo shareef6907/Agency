@@ -5,6 +5,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { PageHead, Badge, Empty, Money } from "@/components/ui";
 import { Field, Modal } from "@/components/form";
 import { can } from "@/lib/roles";
+import { useRealtime } from "@/lib/useRealtime";
 import { Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -29,11 +30,13 @@ export default function Clients() {
     setTeam(t || []);
   }
   useEffect(() => { load(); }, []);
+  useRealtime(["clients"], load);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     const payload = { ...form, monthly_fee: Number(form.monthly_fee), assigned_to: form.assigned_to || null, end_date: form.end_date || null };
-    await supabase.from("clients").insert(payload);
+    const { error } = await supabase.from("clients").insert(payload);
+    if (error) { alert("Could not save client: " + error.message); return; }
     setForm(BLANK); setOpen(false); load();
   }
 

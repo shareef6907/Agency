@@ -5,6 +5,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { PageHead, Badge, Empty } from "@/components/ui";
 import { Field, Modal } from "@/components/form";
 import { Plus } from "lucide-react";
+import { useRealtime } from "@/lib/useRealtime";
 import { format } from "date-fns";
 
 const COLS = [
@@ -32,6 +33,7 @@ export default function Tasks() {
     setClients(c || []);
   }
   useEffect(() => { load(); }, []);
+  useRealtime(["tasks"], load);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
