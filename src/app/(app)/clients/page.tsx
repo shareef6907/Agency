@@ -28,9 +28,19 @@ export default function Clients() {
     setRows(data || []);
     const { data: t } = await supabase.from("profiles").select("id,full_name,role");
     setTeam(t || []);
+    const { data: pmts } = await supabase.from("payments").select("client_id, amount, status");
+    const billed: Record<string, number> = {};
+    const collected: Record<string, number> = {};
+    (pmts || []).forEach((p: any) => {
+      billed[p.client_id] = (billed[p.client_id] || 0) + Number(p.amount || 0);
+      if (p.status === "paid") collected[p.client_id] = (collected[p.client_id] || 0) + Number(p.amount || 0);
+    });
+    setClientTotals({ billed, collected });
   }
+
+  const [clientTotals, setClientTotals] = useState<{ billed: Record<string, number>; collected: Record<string, number> }>({ billed: {}, collected: {} });
   useEffect(() => { load(); }, []);
-  useRealtime(["clients"], load);
+  useRealtime(["clients","payments"], load);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -63,13 +73,13 @@ export default function Clients() {
       {rows.length === 0 ? <Empty text="No clients yet." /> :
         <div className="card overflow-x-auto">
           <table className="w-full min-w-[900px]">
-            <thead><tr>{["Client","Tier","Monthly fee","Status","Start","End","Assigned","Brought by","Contact",""].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
+            <thead><tr>{["Client","Tier","Fee / Project","Status","Start","End","Assigned","Brought by","Contact",""].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
             <tbody>
               {rows.map((c) => (
                 <tr key={c.id} className="hover:bg-panel2/50">
                   <td className="td font-semibold">{c.name}</td>
                   <td className="td capitalize">{c.package_tier}</td>
-                  <td className="td"><Money n={c.monthly_fee} /></td>
+                  <td className="td">{c.package_tier === 'projects' ? <><Money n={clientTotals.collected[c.id] || 0} />{clientTotals.billed[c.id] !== clientTotals.collected[c.id] ? <> <span className="text-muted text-xs">/ <Money n={clientTotals.billed[c.id] || 0} /></span></> : null}</> : <Money n={c.monthly_fee} />}</td>
                   <td className="td"><Badge value={c.status} /></td>
                   <td className="td whitespace-nowrap text-muted">{c.start_date ? format(new Date(c.start_date), "dd MMM yy") : "—"}</td>
                   <td className="td whitespace-nowrap text-muted">{c.end_date ? format(new Date(c.end_date), "dd MMM yy") : "—"}</td>
