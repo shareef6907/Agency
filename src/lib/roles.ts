@@ -12,6 +12,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 export const NAV_ACCESS: Record<string, Role[]> = {
   dashboard: ["ceo", "sales_manager", "account_manager", "editor", "accountant"],
   crm:       ["ceo", "sales_manager"],
+  prospects: ["ceo", "sales_manager"],
   clients:   ["ceo", "sales_manager", "account_manager", "editor"],
   tasks:     ["ceo", "account_manager", "editor"],
   payments:  ["ceo", "sales_manager"],
