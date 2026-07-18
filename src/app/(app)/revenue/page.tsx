@@ -39,7 +39,7 @@ export default function Revenue() {
   const members = useMemo(
     () => [
       { id: null, label: "All" },
-      ...profiles.filter((p) => p.role === "ceo" || p.role === "sales_manager"),
+      ...profiles.filter((p) => p.role === "ceo" || p.role === "sales_manager").map((p) => ({ id: p.id, label: p.full_name })),
     ],
     [profiles]
   );
