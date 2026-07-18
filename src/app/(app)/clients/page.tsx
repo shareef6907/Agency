@@ -34,9 +34,10 @@ export default function Clients() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    const { monthly_fee: _, ...rest } = form;
     const payload = {
-      ...form,
-      monthly_fee: Number(form.monthly_fee),
+      ...rest,
+      monthly_fee: form.package_tier === 'projects' ? 0 : Number(form.monthly_fee),
       assigned_to: form.assigned_to || null,
       end_date: form.end_date || null,
       brought_by: profile?.role === 'sales_manager' ? profile.id : (form.brought_by || null),
@@ -87,7 +88,7 @@ export default function Clients() {
           <form onSubmit={save} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Client / company name" full><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></Field>
             <Field label="Package tier">
-              <select className="input" value={form.package_tier} onChange={(e) => setForm({ ...form, package_tier: e.target.value })}>
+              <select className="input" value={form.package_tier} onChange={(e) => setForm({ ...form, package_tier: e.target.value, monthly_fee: e.target.value === 'projects' ? 0 : form.monthly_fee })}>
                 <option value="starter">Starter</option><option value="growth">Growth</option><option value="premium">Premium</option><option value="custom">Custom</option><option value="projects">By Projects</option>
               </select>
             </Field>

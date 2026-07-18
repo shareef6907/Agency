@@ -13,7 +13,7 @@ export default function Revenue() {
   async function load() {
     const { data: p } = await supabase
       .from("payments")
-      .select("amount, status, period, paid_date, clients(name, brought_by)")
+      .select("id, amount, status, period, paid_date, clients(name, brought_by)")
       .eq("status", "paid");
     setPayments(p || []);
     const { data: profs } = await supabase.from("profiles").select("id, full_name, role");
@@ -86,16 +86,15 @@ export default function Revenue() {
 
   function exportCSV() {
     const header = ["Paid date", "Period", "Client", "Brought by", "Amount"];
-    const rows = filtered
-      .sort((a, b) => (b.paid_date || "").localeCompare(a.paid_date || ""))
+    const rows = [...filtered].sort((a, b) => (b.paid_date || "").localeCompare(a.paid_date || ""))
       .map((p) => [
-        p.paid_date || "",
-        p.period,
-        p.clients?.name || "",
-        nameOf(creditOf(p)) || "CEO",
-        p.amount,
+        String(p.paid_date || "").replace(/"/g, '""'),
+        String(p.period).replace(/"/g, '""'),
+        String(p.clients?.name || "").replace(/"/g, '""'),
+        String(nameOf(creditOf(p)) || "CEO").replace(/"/g, '""'),
+        String(p.amount),
       ]);
-    const csv = [header, ...rows].map((r) => r.join(",")).join("\n");
+    const csv = [header.map((h) => `"${h.replace(/"/g, '""')}"`), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -188,8 +187,7 @@ export default function Revenue() {
                 </tr>
               </thead>
               <tbody>
-                {filtered
-                  .sort((a, b) => (b.paid_date || "").localeCompare(a.paid_date || ""))
+                {[...filtered].sort((a, b) => (b.paid_date || "").localeCompare(a.paid_date || ""))
                   .map((p) => {
                     const credited = creditOf(p);
                     return (
@@ -199,9 +197,7 @@ export default function Revenue() {
                         </td>
                         <td className="td whitespace-nowrap text-muted">{p.period}</td>
                         <td className="td font-medium">{p.clients?.name || "—"}</td>
-                        <td className="td text-muted">
-                          {credited === ceoId && !p.clients?.brought_by ? "—" : (nameOf(credited) || "—")}
-                        </td>
+                        <td className="td text-muted">{nameOf(credited) || "—"}</td>
                         <td className="td text-right"><Money n={p.amount} /></td>
                       </tr>
                     );
