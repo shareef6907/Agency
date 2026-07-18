@@ -81,10 +81,10 @@ export default function Clients() {
             <Field label="Client / company name" full><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></Field>
             <Field label="Package tier">
               <select className="input" value={form.package_tier} onChange={(e) => setForm({ ...form, package_tier: e.target.value })}>
-                <option value="starter">Starter</option><option value="growth">Growth</option><option value="premium">Premium</option><option value="custom">Custom</option>
+                <option value="starter">Starter</option><option value="growth">Growth</option><option value="premium">Premium</option><option value="custom">Custom</option><option value="projects">By Projects</option>
               </select>
             </Field>
-            <Field label="Monthly fee (SAR)"><input type="number" className="input" value={form.monthly_fee} onChange={(e) => setForm({ ...form, monthly_fee: e.target.value })} /></Field>
+            <Field label="Monthly fee (SAR)"><input type="number" className="input" value={form.package_tier === 'projects' ? 0 : form.monthly_fee} disabled={form.package_tier === 'projects'} onChange={(e) => setForm({ ...form, package_tier: form.package_tier, monthly_fee: form.package_tier === 'projects' ? 0 : Number(e.target.value) })} /></Field>
             <Field label="Start date"><input type="date" className="input" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} /></Field>
             <Field label="Contract end date"><input type="date" className="input" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></Field>
             <Field label="Status">

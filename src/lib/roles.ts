@@ -16,6 +16,7 @@ export const NAV_ACCESS: Record<string, Role[]> = {
   tasks:     ["ceo", "account_manager", "editor"],
   payments:  ["ceo", "sales_manager"],
   finance:   ["ceo", "sales_manager"],
+  revenue:   ["ceo"],
   accounting:["ceo", "accountant"],
   team:      ["ceo"],
 };
