@@ -18,7 +18,7 @@ export default function Payments() {
   async function load() {
     const { data } = await supabase.from("payments").select("*, clients(name)").order("due_date", { ascending: true });
     setRows(data || []);
-    const { data: c } = await supabase.from("clients").select("id,name,monthly_fee");
+    const { data: c } = await supabase.from("clients").select("id,name,monthly_fee,package_tier");
     setClients(c || []);
   }
   useEffect(() => { load(); }, []);
@@ -53,7 +53,7 @@ export default function Payments() {
       {rows.length === 0 ? <Empty text="No payments recorded yet." /> :
         <div className="card overflow-x-auto">
           <table className="w-full min-w-[680px]">
-            <thead><tr>{["Client","Period","Amount","Due","Status","Action"].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
+            <thead><tr>{["Client","Period","Amount","Due","Status","Notes","Action"].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
             <tbody>
               {rows.map((p) => (
                 <tr key={p.id} className="hover:bg-panel2/50">
@@ -62,6 +62,7 @@ export default function Payments() {
                   <td className="td"><Money n={p.amount} /></td>
                   <td className="td whitespace-nowrap text-muted">{p.due_date ? format(new Date(p.due_date), "dd MMM yy") : "—"}</td>
                   <td className="td"><Badge value={p.status} /></td>
+                  <td className="td text-muted">{p.notes || "—"}</td>
                   <td className="td">
                     <select value={p.status} onChange={(e) => mark(p.id, e.target.value)} className="bg-ink border border-line rounded px-2 py-1 text-xs">
                       <option value="pending">pending</option><option value="paid">paid</option><option value="overdue">overdue</option>
@@ -79,19 +80,22 @@ export default function Payments() {
             <Field label="Client" full>
               <select className="input" value={form.client_id} onChange={(e) => {
                 const cl = clients.find((c) => c.id === e.target.value);
-                setForm({ ...form, client_id: e.target.value, amount: cl?.monthly_fee || form.amount });
+                setForm({ ...form, client_id: e.target.value, amount: cl?.package_tier === 'projects' ? '' : (cl?.monthly_fee || '') });
               }} required>
                 <option value="">— select client —</option>
                 {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </Field>
             <Field label="Period (YYYY-MM)"><input className="input" value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} /></Field>
-            <Field label="Amount (SAR)"><input type="number" className="input" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></Field>
+            <Field label="Amount (SAR)"><input type="number" className="input" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />{form.amount === '' && clients.find((c) => c.id === form.client_id)?.package_tier === 'projects' && <div className="text-xs text-muted mt-1">One-off project — enter the project amount.</div>}</Field>
             <Field label="Due date"><input type="date" className="input" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} /></Field>
             <Field label="Status">
               <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                 <option value="pending">Pending</option><option value="paid">Paid</option><option value="overdue">Overdue</option>
               </select>
+            </Field>
+            <Field label="Notes" full>
+              <input className="input" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </Field>
             <div className="sm:col-span-2 flex gap-2 justify-end pt-1">
               <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
