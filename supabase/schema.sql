@@ -49,6 +49,7 @@ create table if not exists clients (
   status text default 'active',                  -- active | paused | churned
   platforms text[] default '{}',
   assigned_to uuid references profiles(id),
+  brought_by uuid references profiles(id),
   notes text default '',
   created_at timestamptz not null default now()
 );
