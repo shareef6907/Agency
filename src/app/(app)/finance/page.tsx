@@ -13,15 +13,23 @@ export default function Finance() {
   const [month, setMonth] = useState(format(new Date(), "yyyy-MM"));
   const [payments, setPayments] = useState<any[]>([]);
   const [costs, setCosts] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, string>>({}); // id -> role
   const [activeClients, setActiveClients] = useState(0);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>({ label: "", amount: 0, category: "other" });
 
   async function load() {
-    const { data: p } = await supabase.from("payments").select("amount,status,period").eq("period", month);
+    const { data: p } = await supabase
+      .from("payments")
+      .select("amount,status,period,clients(brought_by)")
+      .eq("period", month);
     setPayments(p || []);
     const { data: c } = await supabase.from("costs").select("*").eq("month", month).order("created_at");
     setCosts(c || []);
+    const { data: profs } = await supabase.from("profiles").select("id,role");
+    const map: Record<string, string> = {};
+    (profs || []).forEach((p: any) => { map[p.id] = p.role; });
+    setProfiles(map);
     const { count } = await supabase.from("clients").select("*", { count: "exact", head: true }).eq("status", "active");
     setActiveClients(count || 0);
   }
@@ -38,7 +46,6 @@ export default function Finance() {
   async function seedDefaults() {
     const editors = Math.floor(activeClients / 4);
     const rows = [
-      { label: "Sales manager (base + allowances)", amount: 3000, category: "salary" },
       { label: "Office rent", amount: 2500, category: "rent" },
       { label: "Electricity", amount: 500, category: "electricity" },
       { label: "Software & subscriptions", amount: 1500, category: "subscriptions" },
@@ -48,14 +55,62 @@ export default function Finance() {
     load();
   }
 
-  const revenue = useMemo(() => payments.filter((p) => p.status === "paid").reduce((a, p) => a + Number(p.amount || 0), 0), [payments]);
-  const totalCost = useMemo(() => costs.reduce((a, c) => a + Number(c.amount || 0), 0), [costs]);
-  const profit = revenue - totalCost;
-  const rate = revenue > 100000 ? 0.25 : 0.20;
-  const share = profit > 0 ? Math.round(profit * rate) : 0;
-  const ownerNetBeforeZakat = profit - share;
-  const zakat = ownerNetBeforeZakat > 0 ? Math.round(ownerNetBeforeZakat * 0.025) : 0;
-  const ownerNet = ownerNetBeforeZakat - zakat;
+  const commission = useMemo(() => {
+    const paidPayments = payments.filter((p) => p.status === "paid");
+
+    const clientBroughtBy = (client: any) => client?.brought_by ?? null;
+
+    // Bucket revenue by brought_by role
+    let salesRev = 0; // brought_by is sales_manager
+    let ceoRev = 0;   // brought_by is ceo, sales_manager, or NULL
+
+    paidPayments.forEach((p) => {
+      const bb = clientBroughtBy(p.clients);
+      const role = bb ? profiles[bb] : null;
+      const amount = Number(p.amount || 0);
+      if (role === "sales_manager") {
+        salesRev += amount;
+      } else {
+        // ceo, other role, or null → CEO bucket
+        ceoRev += amount;
+      }
+    });
+
+    const totalCosts = costs.reduce((a, c) => a + Number(c.amount || 0), 0);
+
+    // Cost allocation: deduct from CEO bucket first
+    const ceoCost = Math.min(totalCosts, ceoRev);
+    const salesCost = totalCosts - ceoCost;
+
+    // Sales manager profit base
+    const profitBase = Math.max(salesRev - salesCost, 0);
+
+    // Commission rate based on HIS revenue only
+    const rate = salesRev > 100000 ? 0.25 : 0.20;
+
+    const grossCommission = rate * profitBase;
+    const extraPayout = Math.max(grossCommission - 3000, 0);
+    const smTotalComp = 3000 + extraPayout;
+
+    // CEO net
+    const ceoNetBeforeZakat = (ceoRev - ceoCost) + (salesRev - salesCost - smTotalComp);
+    const zakat = Math.max(Math.round(ceoNetBeforeZakat * 0.025), 0);
+
+    return {
+      salesRev,
+      ceoRev,
+      totalCosts,
+      ceoCost,
+      salesCost,
+      profitBase,
+      rate,
+      grossCommission,
+      smTotalComp,
+      ceoNetBeforeZakat,
+      zakat,
+      totalCollected: salesRev + ceoRev,
+    };
+  }, [payments, costs, profiles]);
 
   return (
     <div>
@@ -66,10 +121,10 @@ export default function Finance() {
         } />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Stat label="Collected revenue" value={<Money n={revenue} />} />
-        <Stat label="Total costs" value={<Money n={totalCost} />} />
-        <Stat label="Net profit" value={<Money n={profit} />} tone={profit >= 0 ? "teal" : "red"} />
-        <Stat label={`Sales manager share (${rate * 100}%)`} value={<Money n={share} />} tone="gold" />
+        <Stat label="Collected revenue" value={<Money n={commission.totalCollected} />} />
+        <Stat label="Total costs" value={<Money n={commission.totalCosts} />} />
+        <Stat label="Net profit" value={<Money n={commission.totalCollected - commission.totalCosts} />} tone={commission.totalCollected - commission.totalCosts >= 0 ? "teal" : "red"} />
+        <Stat label="Sales manager comp" value={<Money n={commission.smTotalComp} />} tone="gold" />
       </div>
 
       <div className="card p-5 mb-6">
@@ -77,19 +132,31 @@ export default function Finance() {
           <h3 className="font-bold">Profit-share breakdown — {format(new Date(month + "-01"), "MMMM yyyy")}</h3>
           <span className="text-xs text-muted">{activeClients} active clients · {Math.floor(activeClients / 4)} editor(s) by the 1-per-4 rule</span>
         </div>
-        <div className="text-sm text-muted mb-4">Rate is 20% of profit, rising to 25% in any month revenue passes SAR 100,000.</div>
+        <div className="text-sm text-muted mb-4">Commission is 20% of profit from his own clients (25% in any month his sales pass SAR 100,000), against a SAR 3,000 monthly base + allowances.</div>
         <div className="space-y-1.5 text-sm">
-          <Row label="Collected revenue" value={revenue} />
-          <Row label="− Total running costs" value={-totalCost} />
+          <Row label="Your sales" value={commission.ceoRev} />
+          <Row label="Sales manager sales" value={commission.salesRev} />
           <div className="border-t border-line my-2" />
-          <Row label="= Net profit" value={profit} bold />
-          <Row label={`Sales manager share (${rate * 100}%)`} value={-share} tone="gold" />
-          <Row label="= Your net before zakat" value={ownerNetBeforeZakat} />
-          <Row label="− Zakat (2.5% estimate)" value={-zakat} />
+          <Row label="− Costs (from your side)" value={-commission.ceoCost} />
+          {commission.salesCost > 0 && (
+            <Row label="− Costs overflow (from his side)" value={-commission.salesCost} />
+          )}
           <div className="border-t border-line my-2" />
-          <Row label="= Your net after zakat" value={ownerNet} bold tone="teal" />
+          <Row label="His profit base" value={commission.profitBase} />
+          <Row label={`Commission rate (${commission.rate * 100}%) + gross commission`} value={commission.grossCommission} tone="gold" />
+          <Row label="− Base + allowances (3,000)" value={-3000} />
+          <div className="border-t border-line my-2" />
+          <Row label="= Extra payout" value={Math.max(commission.grossCommission - 3000, 0)} />
+          <Row label="= His total compensation" value={commission.smTotalComp} bold />
+          <div className="border-t border-line my-2" />
+          <Row label="= Your net before zakat" value={commission.ceoNetBeforeZakat} />
+          <Row label="− Zakat 2.5%" value={-commission.zakat} />
+          <div className="border-t border-line my-2" />
+          <Row label="= Your net after zakat" value={commission.ceoNetBeforeZakat - commission.zakat} bold tone="teal" />
         </div>
-        {revenue > 100000 && <div className="mt-3 text-xs text-gold">Revenue above SAR 100,000 — 25% rate applied.</div>}
+        {commission.salesRev > 100000 && (
+          <div className="mt-3 text-xs text-gold">Sales manager sales above SAR 100,000 — 25% rate applied.</div>
+        )}
         <div className="mt-2 text-xs text-muted">Zakat shown as a simple 2.5% monthly estimate on your net, taken from your share only (it does not affect the sales manager). ZATCA assesses zakat annually on your full zakat base — treat this as a monthly reserve, not the final bill. No VAT applied.</div>
       </div>
 
@@ -101,7 +168,7 @@ export default function Finance() {
             <button onClick={() => setOpen(true)} className="btn btn-gold text-sm"><Plus className="w-4 h-4" /> Add cost</button>
           </div>
         </div>
-        {costs.length === 0 ? <div className="text-sm text-muted">No costs added for this month. Use “Add standard costs” to seed the agreed cost list.</div> :
+        {costs.length === 0 ? <div className="text-sm text-muted">No costs added for this month. Use "Add standard costs" to seed the agreed cost list.</div> :
           <table className="w-full">
             <thead><tr>{["Cost","Category","Amount",""].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
             <tbody>
