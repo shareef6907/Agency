@@ -37,7 +37,7 @@ export default function Prospects() {
     const { data } = await supabase
       .from("prospects")
       .select("*, profiles!assigned_to(full_name), profiles!created_by(full_name)")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: true });
     setRows(data || []);
     const { data: t } = await supabase.from("profiles").select("id, full_name, role")
       .in("role", ["ceo", "sales_manager"]);
@@ -55,9 +55,19 @@ export default function Prospects() {
     rows.filter((p: any) => p.follow_up_date && p.follow_up_date <= today && p.status === "follow_up"),
   [rows, today]);
 
+  const baseFiltered = useMemo(() => {
+    let r = rows;
+    if (filters.city) r = r.filter((p: any) => p.city === filters.city);
+    if (filters.industry) r = r.filter((p: any) => p.industry === filters.industry);
+    if (filters.assigned) r = r.filter((p: any) => p.assigned_to === filters.assigned);
+    if (filters.search) r = r.filter((p: any) =>
+      p.company_name?.toLowerCase().includes(filters.search.toLowerCase()));
+    return r;
+  }, [rows, filters]);
+
   const freshBatch = useMemo(() =>
-    rows.filter((p: any) => p.status === "new").slice(0, batch),
-  [rows, batch]);
+    baseFiltered.filter((p: any) => p.status === "new").slice(0, batch),
+  [baseFiltered, batch]);
 
   const filtered = useMemo(() => {
     let r = rows;
@@ -177,7 +187,7 @@ export default function Prospects() {
   }
 
   function canConvert(p: any) {
-    return p.status === "meeting" || p.status === "interested";
+    return p.status === "meeting" || p.status === "follow_up";
   }
 
   return (
