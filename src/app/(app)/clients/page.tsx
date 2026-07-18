@@ -39,7 +39,7 @@ export default function Clients() {
       monthly_fee: Number(form.monthly_fee),
       assigned_to: form.assigned_to || null,
       end_date: form.end_date || null,
-      brought_by: form.brought_by || null,
+      brought_by: profile?.role === 'sales_manager' ? profile.id : (form.brought_by || null),
     };
     const { error } = await supabase.from("clients").insert(payload);
     if (error) { alert("Could not save client: " + error.message); return; }

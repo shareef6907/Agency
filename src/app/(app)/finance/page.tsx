@@ -146,7 +146,7 @@ export default function Finance() {
           <Row label={`Commission rate (${commission.rate * 100}%) + gross commission`} value={commission.grossCommission} tone="gold" />
           <Row label="− Base + allowances (3,000)" value={-3000} />
           <div className="border-t border-line my-2" />
-          <Row label="= Extra payout" value={commission.grossCommission - 3000} />
+          <Row label="= Extra payout" value={Math.max(commission.grossCommission - 3000, 0)} />
           <Row label="= His total compensation" value={commission.smTotalComp} bold />
           <div className="border-t border-line my-2" />
           <Row label="= Your net before zakat" value={commission.ceoNetBeforeZakat} />
