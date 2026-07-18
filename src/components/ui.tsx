@@ -28,8 +28,9 @@ const STATUS_STYLES: Record<string, string> = {
   normal: "bg-line text-muted",
   low: "bg-line text-muted",
 };
+const LABELS: Record<string, string> = { churned: "ended" };
 export function Badge({ value }: { value: string }) {
-  const label = (value || "").replace(/_/g, " ");
+  const label = (LABELS[value] || value || "").replace(/_/g, " ");
   return <span className={`badge ${STATUS_STYLES[value] || "bg-line text-muted"}`}>{label}</span>;
 }
 
